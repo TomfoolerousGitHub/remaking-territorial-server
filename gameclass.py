@@ -1,6 +1,3 @@
-import asyncio
-
-
 class Game:
     def __init__(self):
         self.nations = {}
@@ -9,6 +6,10 @@ class Game:
         self.outboundData = []
 
     def registerNation(self, nation: dict):
+        for interaction in self.outboundData:
+            if interaction['type'] == 'registerNation':
+                if interaction['id'] == nation['id']:
+                    return
         self.nations[nation['id']] = {}
         self.nations[nation['id']]['color'] = nation['color']
         self.nations[nation['id']]['borderColor'] = nation['borderColor']
@@ -33,6 +34,13 @@ class Game:
         self.outboundData.append(outboundData)
 
     def expandPixels(self, id):
+        for interaction in self.outboundData:
+            if interaction['type'] == 'expandPixels':
+                try:
+                    if interaction['nation'] == id:
+                        return
+                except KeyError:
+                    continue
         pixelsToOccupy = set()
         for pixel in self.nations[id]['borderPixels']:
             for neighbor in [[pixel[0] + 4, pixel[1]], [pixel[0] - 4, pixel[1]], [pixel[0], pixel[1] + 4], [pixel[0], pixel[1] - 4]]:
@@ -46,11 +54,9 @@ class Game:
         pixelsToOccupy2 = pixelsToOccupy.copy()
         for pixel in pixelsToOccupy2:
             for nation in self.nations:
-                print(nation)
                 if nation == id:
                     continue
                 elif pixel in self.nations[nation]['pixelsOwned']:
-                    print('pixel in other nation')
                     pixelsToOccupy.remove(pixel)
                     continue
         self.nations[id]['pixelsOwned'] = self.nations[id]['pixelsOwned'].union(pixelsToOccupy)

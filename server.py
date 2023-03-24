@@ -38,7 +38,6 @@ class Server:
             if len(self.game.outboundData) > 0:
                 for data in self.game.outboundData:
                     await self.broadcast(json.dumps(data))
-                    print(data)
                 self.game.outboundData = []
 
 
