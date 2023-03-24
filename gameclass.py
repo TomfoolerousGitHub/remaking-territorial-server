@@ -1,8 +1,12 @@
+import asyncio
+
+
 class Game:
     def __init__(self):
         self.nations = {}
         self.canvasWidth = 1000
         self.canvasHeight = 1000
+        self.outboundData = []
 
     def registerNation(self, nation: dict):
         self.nations[nation['id']] = {}
@@ -18,7 +22,7 @@ class Game:
         borderPixels = [[x - 4, y], [x, y - 4], [x + 8, y], [x, y + 8], [x - 4, y + 4], [x + 4, y - 4], [x + 4, y + 8], [x + 8, y + 4]]
         for pixel in borderPixels:
             self.nations[nation['id']]['borderPixels'].add(tuple(pixel))
-        returnData = {
+        outboundData = {
             "type": "registerNation",
             "id": nation['id'],
             "color": self.nations[nation['id']]['color'],
@@ -26,7 +30,7 @@ class Game:
             "x": nation['x'],
             "y": nation['y']
         }
-        return returnData
+        self.outboundData.append(outboundData)
 
     def expandPixels(self, id):
         pixelsToOccupy = set()
@@ -78,4 +82,16 @@ class Game:
                     except:
                         continue
         self.nations[id]['borderPixels'] = newBorderPixels
-        return pixelsToOccupy, newBorderPixels, noLongerBorderPixels
+        outboundData = {
+            'type': 'expandPixels',
+            'nation': id,
+            'pixelsToOccupy': list(pixelsToOccupy),
+            'newBorderPixels': list(newBorderPixels),
+            'noLongerBorderPixels': list(noLongerBorderPixels)
+        }
+        self.outboundData.append(outboundData)
+
+    def sendOutboundData(self):
+        outboundData = self.outboundData
+        self.outboundData = []
+        return outboundData
