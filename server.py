@@ -1,7 +1,7 @@
 import websockets
-import asyncio
 from gameclass import Game
 import json
+import asyncio
 
 
 class Server:
@@ -12,6 +12,7 @@ class Server:
         self.start_server = websockets.serve(self.handler, 'localhost', self.port)
         self.loop = asyncio.get_event_loop()
         self.loop.run_until_complete(self.start_server)
+        self.loop.create_task(self.tick())
         self.loop.run_forever()
 
     async def handler(self, websocket, path):
@@ -21,24 +22,27 @@ class Server:
                 data = await websocket.recv()
                 data = json.loads(data)
                 if data['type'] == 'expandPixels':
-                    pixelsToOccupy, newBorderPixels, noLongerBorderPixels = self.game.expandPixels(data['id'])
-                    outboundData = {
-                        'type': 'expandPixels',
-                        'nation': data['id'],
-                        'pixelsToOccupy': list(pixelsToOccupy),
-                        'newBorderPixels': list(newBorderPixels),
-                        'noLongerBorderPixels': list(noLongerBorderPixels)
-                    }
-                    await self.broadcast(json.dumps(outboundData))
+                    self.game.expandPixels(data['id'])
                 elif data['type'] == 'registerNation':
-                    outboundData = self.game.registerNation(data)
-                    await self.broadcast(json.dumps(outboundData))
+                    self.game.registerNation(data)
         except websockets.exceptions.ConnectionClosed:
             self.connections.remove(websocket)
 
     async def broadcast(self, data):
         for connection in self.connections:
             await connection.send(data)
+
+    async def tick(self):
+        tick = 0
+        while True:
+            await asyncio.sleep(0.4)
+            tick += 1
+            if len(self.game.outboundData) > 0:
+                for data in self.game.outboundData:
+                    await self.broadcast(json.dumps(data))
+                self.game.outboundData = []
+            self.game.addMoney(tick)
+            tick = tick % 10
 
 
 if __name__ == '__main__':
