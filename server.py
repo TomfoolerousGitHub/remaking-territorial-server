@@ -33,12 +33,16 @@ class Server:
             await connection.send(data)
 
     async def tick(self):
+        tick = 0
         while True:
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.4)
+            tick += 1
             if len(self.game.outboundData) > 0:
                 for data in self.game.outboundData:
                     await self.broadcast(json.dumps(data))
                 self.game.outboundData = []
+            self.game.addMoney(tick)
+            tick = tick % 10
 
 
 if __name__ == '__main__':
