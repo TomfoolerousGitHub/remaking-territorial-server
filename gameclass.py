@@ -1,8 +1,8 @@
 class Game:
     def __init__(self):
         self.nations = {}
-        self.canvasWidth = 1000
-        self.canvasHeight = 1000
+        self.canvasWidth = 960
+        self.canvasHeight = 540
         self.outboundData = []
 
     def registerNation(self, nation: dict):
@@ -15,7 +15,7 @@ class Game:
         self.nations[nation['id']]['borderColor'] = nation['borderColor']
         self.nations[nation['id']]['pixelsOwned'] = set()
         self.nations[nation['id']]['borderPixels'] = set()
-        self.nations[nation['id']]['Money'] = 540
+        self.nations[nation['id']]['money'] = 540
         x = nation['x']
         y = nation['y']
         pixelsOwned = [[x, y], [x + 4, y], [x, y + 4], [x + 4, y + 4], [x - 4, y], [x, y - 4], [x + 8, y], [x, y + 8], [x - 4, y + 4], [x + 4, y - 4], [x + 4, y + 8], [x + 8, y + 4]]
@@ -89,13 +89,13 @@ class Game:
                         noLongerBorderPixels.remove(pixel)
                     except:
                         continue
-        if len(pixelsToOccupy) * 2 > self.nations[id]['Money']:
+        if len(pixelsToOccupy) * 2 > self.nations[id]['money']:
             self.nations[id] = previousState
             return
         elif len(pixelsToOccupy) == 0:
             self.nations[id] = previousState
             return
-        self.nations[id]['Money'] -= len(pixelsToOccupy) * 2
+        self.nations[id]['money'] -= len(pixelsToOccupy) * 2
         self.nations[id]['borderPixels'] = newBorderPixels
         outboundData = {
             'type': 'expandPixels',
@@ -103,7 +103,7 @@ class Game:
             'pixelsToOccupy': list(pixelsToOccupy),
             'newBorderPixels': list(newBorderPixels),
             'noLongerBorderPixels': list(noLongerBorderPixels),
-            'money': self.nations[id]['Money']
+            'money': self.nations[id]['money']
         }
         self.outboundData.append(outboundData)
 
@@ -115,7 +115,62 @@ class Game:
     def addMoney(self, tick: int):
         if tick == 10:
             for nation in self.nations:
-                self.nations[nation]['Money'] += self.nations[nation]['pixelsOwned'].__len__()
+                self.nations[nation]['money'] += self.nations[nation]['pixelsOwned'].__len__()
         else:
             for nation in self.nations:
-                self.nations[nation]['Money'] += self.nations[nation]['Money'] * 0.05
+                self.nations[nation]['money'] += self.nations[nation]['money'] * 0.05
+
+    def attackNation(self, attacker: str, defender: str):
+        previousStateDefender = dict(self.nations[defender])
+        previousStateAttacker = dict(self.nations[attacker])
+        pixelsToOccupy = set()
+        for pixel in self.nations[defender]['borderPixels']:
+            for neighbor in [[pixel[0] + 4, pixel[1]], [pixel[0] - 4, pixel[1]], [pixel[0], pixel[1] + 4], [pixel[0], pixel[1] - 4]]:
+                if not (neighbor[0] < 0 or neighbor[0] > self.canvasWidth or neighbor[1] < 0 or neighbor[1] > self.canvasHeight):
+                    if self.nations[attacker]['pixelsOwned'].isdisjoint({tuple(neighbor)}):
+                        continue
+                    else:
+                        self.nations[defender]['pixelsOwned'].discard(pixel)
+                        self.nations[attacker]['pixelsOwned'].add(pixel)
+                        pixelsToOccupy.add(pixel)
+                else:
+                    continue
+        troopDensity = self.nations[defender]['money'] / self.nations[defender]['pixelsOwned'].__len__()
+        if self.nations[attacker]['money'] < len(pixelsToOccupy) * troopDensity:
+            self.nations[defender] = previousStateDefender
+            self.nations[attacker] = previousStateAttacker
+            return
+        self.nations[attacker]['money'] -= len(pixelsToOccupy) * troopDensity
+        self.nations[defender]['money'] -= len(pixelsToOccupy) * troopDensity
+        for pixel in self.nations[defender]['pixelsOwned']:
+            for neighbor in [[pixel[0] + 4, pixel[1]], [pixel[0] - 4, pixel[1]], [pixel[0], pixel[1] + 4], [pixel[0], pixel[1] - 4]]:
+                if not (neighbor[0] < 0 or neighbor[0] > self.canvasWidth or neighbor[1] < 0 or neighbor[1] > self.canvasHeight):
+                    for nation in self.nations:
+                        if nation == defender:
+                            continue
+                        elif tuple(neighbor) in self.nations[nation]['pixelsOwned']:
+                            self.nations[defender]['borderPixels'].add(pixel)
+                            continue
+                        else:
+                            continue
+                else:
+                    self.nations[defender]['borderPixels'].add(pixel)
+        outboundData = {
+            'type': 'attackNation',
+            'attacker': attacker,
+            'defender': defender,
+            'pixelsToOccupy': list(pixelsToOccupy),
+            'defenderBorderPixels': list(self.nations[defender]['borderPixels']),
+            'attackerBorderPixels': list(self.nations[attacker]['borderPixels']),
+            'attackerMoney': self.nations[attacker]['money'],
+            'defenderMoney': self.nations[defender]['money']
+        }
+        self.outboundData.append(outboundData)
+
+    def getPixelOwner(self, pixel: list):
+        for nation in self.nations:
+            if tuple(pixel) in self.nations[nation]['pixelsOwned']:
+                return nation
+            else:
+                continue
+        return None
