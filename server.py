@@ -25,6 +25,13 @@ class Server:
                     self.game.expandPixels(data['id'])
                 elif data['type'] == 'registerNation':
                     self.game.registerNation(data)
+                elif data['type'] == 'attackNation':
+                    defender = self.game.getPixelOwner([data['x'], data['y']])
+                    if defender is not None:
+                        self.game.attackNation(data['id'], defender)
+                    else:
+                        self.game.expandPixels(data['id'])
+
         except websockets.exceptions.ConnectionClosed:
             self.connections.remove(websocket)
 
