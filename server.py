@@ -22,15 +22,18 @@ class Server:
                 data = await websocket.recv()
                 data = json.loads(data)
                 if data['type'] == 'expandPixels':
-                    self.game.expandPixels(data['id'])
+                    money = self.game.calculateMoney(data['id'], float(data['moneyPercentage']))
+                    self.game.expandPixels(data['id'], money)
                 elif data['type'] == 'registerNation':
                     self.game.registerNation(data)
                 elif data['type'] == 'attackNation':
                     defender = self.game.getPixelOwner([data['x'], data['y']])
                     if defender is not None:
-                        self.game.attackNation(data['id'], defender)
+                        money = self.game.calculateMoney(data['id'], float(data['moneyPercentage']))
+                        self.game.attackNation(data['id'], defender, money)
                     else:
-                        self.game.expandPixels(data['id'])
+                        money = self.game.calculateMoney(data['id'], float(data['moneyPercentage']))
+                        self.game.expandPixels(data['id'], money)
 
         except websockets.exceptions.ConnectionClosed:
             self.connections.remove(websocket)
@@ -50,6 +53,7 @@ class Server:
                 self.game.outboundData = []
             self.game.addMoney(tick)
             tick = tick % 10
+            self.game.executeActionQueue()
 
 
 if __name__ == '__main__':
