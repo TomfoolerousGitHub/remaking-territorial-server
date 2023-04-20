@@ -34,6 +34,12 @@ class Server:
                     else:
                         money = self.game.calculateMoney(data['id'], float(data['moneyPercentage']))
                         self.game.expandPixels(data['id'], money)
+                elif data['type'] == 'donateNation':
+                    recipient = self.game.getPixelOwner([data['x'], data['y']])
+                    if recipient is not None:
+                        money = self.game.calculateMoney(data['id'], float(data['moneyPercentage']))
+                        print(money)
+                        self.game.donateNation(data['id'], recipient, money)
 
         except websockets.exceptions.ConnectionClosed:
             self.connections.remove(websocket)

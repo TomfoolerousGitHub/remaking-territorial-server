@@ -104,13 +104,16 @@ class Game:
                     except:
                         continue
         if len(pixelsToOccupy) * 2 > money:
-            print('not enough money')
             self.nations[id] = previousState
             return
         elif len(pixelsToOccupy) == 0:
             self.nations[id] = previousState
             return
+        print(f'Money: {money}')
+        money -= len(pixelsToOccupy) * 2
+        print(f'Money: {money}')
         self.nations[id]['money'] -= len(pixelsToOccupy) * 2
+        print(f'Nation {id} expanded {len(pixelsToOccupy)} pixels and lost {len(pixelsToOccupy) * 2} money')
         money -= len(pixelsToOccupy) * 2
         self.nations[id]['borderPixels'] = newBorderPixels
         outboundData = {
@@ -128,7 +131,6 @@ class Game:
                 if action['nation'] == id:
                     alreadyQueued = True
         if not alreadyQueued:
-            print('queueing expandPixels')
             self.actionQueueQueue.append({'type': 'expandPixels', 'nation': id, 'money': money})
 
     def sendOutboundData(self) -> list:
@@ -139,10 +141,12 @@ class Game:
     def addMoney(self, tick: int) -> None:
         if tick == 10:
             for nation in self.nations:
+                print(f'Nation {nation} has {self.nations[nation]["money"]} money and will get {len(self.nations[nation]["pixelsOwned"])} more')
                 self.nations[nation]['money'] += self.nations[nation]['pixelsOwned'].__len__()
         else:
             for nation in self.nations:
-                self.nations[nation]['money'] += self.nations[nation]['money'] * 0.05
+                print(f'Nation {nation} has {self.nations[nation]["money"]} money and will get {self.nations[nation]["money"] * 0.01} more')
+                self.nations[nation]['money'] += self.nations[nation]['money'] * 0.01
 
     def attackNation(self, attacker: str, defender: str, money: float) -> None:
         alreadyAttacked = False
@@ -212,6 +216,21 @@ class Game:
         self.outboundData.append(outboundData)
         self.actionQueueQueue.append({'type': 'attackNation', 'attacker': attacker, 'defender': defender, 'money': money})
 
+    def donateNation(self, donator: str, recipient: str, money: float) -> None:
+        if money > self.nations[donator]['money']:
+            return
+        self.nations[donator]['money'] -= money
+        self.nations[recipient]['money'] += money
+        outboundData = {
+            'type': 'donateNation',
+            'donator': donator,
+            'recipient': recipient,
+            'amount': money,
+            'donatorMoney': self.nations[donator]['money'],
+            'recipientMoney': self.nations[recipient]['money']
+        }
+        self.outboundData.append(outboundData)
+
     def getPixelOwner(self, pixel: list) -> Union[str, None]:
         for nation in self.nations:
             if tuple(pixel) in self.nations[nation]['pixelsOwned']:
@@ -224,14 +243,11 @@ class Game:
         self.actionQueue.append(data)
 
     def calculateMoney(self, id: str, percentage: float) -> float:
-        return self.nations[id]['money'] * percentage
+        return self.nations[id]['money'] * (percentage / 100)
 
     def executeActionQueue(self) -> None:
-        if self.actionQueue.__len__() != 0:
-            print(self.actionQueue)
         for action in self.actionQueue:
             if action['type'] == 'expandPixels':
-                print('expandPixels')
                 self.expandPixels(action['nation'], action['money'])
             elif action['type'] == 'attackNation':
                 self.attackNation(action['attacker'], action['defender'], action['money'])
